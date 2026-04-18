@@ -1,6 +1,6 @@
 # AGENTS.md
 
-# Repository‑Quick‑Start
+# Wallhalla.nvim Quick‑Start
 
 The repository contains a C++ shared library `recipe_picker` that is used by a Neovim Lua plugin. The library is compiled with CMake and offers a small interface exposed via FFI to Lua.
 
