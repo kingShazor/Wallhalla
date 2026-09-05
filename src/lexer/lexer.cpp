@@ -1,13 +1,14 @@
-#include "types.h"
-#include <print>
+export module lexer;
+
+import std;
 
 using namespace std;
 
-namespace asafaw_n
+export namespace wallhalla_n
 {
-  void tokenize() {
-    println("tokenize");
-
+  void tokenize()
+  {
+    println( "tokenize" );
   }
 
-}
+} // namespace asafaw_n

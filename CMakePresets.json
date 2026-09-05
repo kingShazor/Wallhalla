@@ -12,8 +12,12 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
+        "CMAKE_EXPERIMENTAL_CXX_IMPORT_STD": "f35a9ac6-8463-4d38-8eec-5d6008153e7d",
+        "CMAKE_CXX_MODULE_STD": "ON",
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/llvm-23/lib/libc++.modules.json",
         "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },

@@ -1,10 +1,13 @@
-#include "types.h"
-#include <print>
+import std;
+import lexer;
+import types;
 
 using namespace std;
+using namespace wallhalla_n;
 
-int main( const i32, char **)
+int main( const i32, char ** )
 {
-  println("hello world!");
-  return 1;
+  tokenize();
+  println( "hello {}!", "world" );
+  return 0;
 }

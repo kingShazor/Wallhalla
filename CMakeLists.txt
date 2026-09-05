@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 4.4)
 project(wallhalla LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 26)
@@ -17,11 +17,22 @@ endif()
 add_compile_options(-fno-exceptions)
 add_compile_options(-fno-rtti)
 
+
+# # besser platformübergreifend libc++ verwenden
+# if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" 
+#     AND NOT USING_ZIG)
+#     add_compile_options(-stdlib=libc++)
+#     add_link_options(-stdlib=libc++)
+# endif()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} 
     PUBLIC
-        src/lexer/lexer.cpp
         src/main.cpp
+    PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES
+        src/types.cpp
+        src/lexer/lexer.cpp
 )
 
 
@@ -42,6 +53,7 @@ target_compile_options(${PROJECT_NAME}
         -Wno-shorten-64-to-32
         -Wnon-virtual-dtor
         -ftrivial-auto-var-init=pattern
+        -Wno-reserved-module-identifier
         # -fsanitize=address,undefined,leak
         -Werror > )
 
