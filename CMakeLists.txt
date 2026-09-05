@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 4.2)
 project(wallhalla LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -13,8 +13,54 @@ if(ENABLE_PROFILING)
   add_link_options(-g -fno-omit-frame-pointer)
 endif()
 
-add_library(${PROJECT_NAME} SHARED src/ast_diff.cpp)
+
+add_compile_options(-fno-exceptions)
+add_compile_options(-fno-rtti)
+
+add_executable(${PROJECT_NAME})
+target_sources(${PROJECT_NAME} 
+    PUBLIC
+        src/lexer/lexer.cpp
+        src/main.cpp
+)
+
+
+target_compile_options(${PROJECT_NAME}
+  PRIVATE
+    $<$<CXX_COMPILER_ID:MSC>:/W4>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wsign-conversion
+        -Wshadow
+        -Wunreachable-code
+        -Wfloat-equal
+        -Wcast-align
+        -Wundef
+        -Wno-shorten-64-to-32
+        -Wnon-virtual-dtor
+        -ftrivial-auto-var-init=pattern
+        # -fsanitize=address,undefined,leak
+        -Werror > )
+
+# add_library(${PROJECT_NAME} SHARED src/ast_diff.cpp)
+
+
+
+target_include_directories(wallhalla
+    PRIVATE
+        src
+    PUBLIC
+        include
+)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+if (UNIX AND NOT APPLE)
+  target_compile_options(${PROJECT_NAME} PRIVATE -fPIC)
+endif()
 
 if (UNIX AND NOT APPLE)
   target_compile_options(${PROJECT_NAME} PRIVATE -fPIC)
