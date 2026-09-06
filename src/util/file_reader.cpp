@@ -1,4 +1,7 @@
+module;
+#include <cerrno>
 export module file_reader;
+
 import file;
 import std;
 import types;
@@ -10,15 +13,6 @@ export namespace wallhalla_n
   class fileReader_c
   {
     fileGuard_s &&fileGuard;
-    std::string fileData;
-
-    void readFile()
-    {
-      array< char, 256 > cBuffer;
-      auto &file = fileGuard.file;
-      while ( const u64 read = std::fread( cBuffer.data(), sizeof( char ), cBuffer.size(), file.handle ) )
-        fileData += string_view( cBuffer.data(), read );
-    }
 
     public:
       fileReader_c( fileGuard_s &&fileGuard ) :
@@ -30,13 +24,19 @@ export namespace wallhalla_n
         println( "Wrong file access mode. Expected a read access got {}", toCStr( file.mode ) );
         exit( 1 );
       }
-      readFile();
     }
 
-
-    // erstmal mit copy bei der Verwendung spaeter verfeinern
-    const string &getFileData() const
+    std::expected< string, fileError_s > readFile()
     {
+      std::string fileData;
+      array< char, 256 > cBuffer;
+      auto &file = fileGuard.file;
+      while ( const u64 read = std::fread( cBuffer.data(), sizeof( char ), cBuffer.size(), file.handle ) )
+        fileData += string_view( cBuffer.data(), read );
+
+      if ( ferror( file.handle ) )
+        return std::unexpected< fileError_s >( { .code = errno });
+
       return fileData;
     }
   };
