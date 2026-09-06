@@ -33,6 +33,8 @@ target_sources(${PROJECT_NAME}
     PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES
         src/types.cpp
         src/lexer/lexer.cpp
+        src/util/file_reader.cpp
+        src/util/file_util.cpp
 )
 
 

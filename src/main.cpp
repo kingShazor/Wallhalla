@@ -5,9 +5,10 @@ import types;
 using namespace std;
 using namespace wallhalla_n;
 
-int main( const i32, char ** )
+int main( const i32 argc, char **argv )
 {
-  tokenize();
-  println( "hello {}!", "world" );
+  println( "start engine {}!", "Wallhalla" );
+  for ( i32 i = 1; i < argc; ++i )
+    tokenize( argv[ i ] );
   return 0;
 }
