@@ -18,6 +18,18 @@ export namespace wallhalla_n
     WORD
   };
 
+  enum class operator_t : u8
+  {
+    PLUS,
+    MINUS,
+    MULTIPLY,
+    DIVIDE,
+    ROUND_BRACKED_BEGIN,
+    ROUND_BRACKED_END,
+    ASIGN,
+    INSTRUCTION
+  };
+
   struct tokenBase_s
   {
     tokenType_t tokenType;
@@ -39,17 +51,6 @@ export namespace wallhalla_n
       value( value )
     {
     }
-  };
-
-  enum class operator_t : u8
-  {
-    PLUS,
-    MINUS,
-    MULTIPLY,
-    DIVIDE,
-    ROUND_BRACKED_BEGIN,
-    ROUND_BRACKED_END,
-    INSTRUCTION
   };
 
   struct operator_s : public tokenBase_s
@@ -77,12 +78,12 @@ export namespace wallhalla_n
     }
   };
 
+  using token_t = unique_ptr< tokenBase_s >;
 } // namespace wallhalla_n
 
 namespace
 {
   using namespace wallhalla_n;
-  using token_t = unique_ptr< tokenBase_s >;
 
   bool isNumber( const string &word )
   {

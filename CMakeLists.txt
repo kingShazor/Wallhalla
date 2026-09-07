@@ -35,18 +35,11 @@ FetchContent_MakeAvailable(googletest)
 target_compile_options(gtest PRIVATE -Wno-character-conversion)
 target_compile_options(gtest_main PRIVATE -Wno-character-conversion)
 
-# # besser platformübergreifend libc++ verwenden
-# if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" 
-#     AND NOT USING_ZIG)
-#     add_compile_options(-stdlib=libc++)
-#     add_link_options(-stdlib=libc++)
-# endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(${PROJECT_NAME})
-target_sources(${PROJECT_NAME} 
-    PUBLIC
-        src/main.cpp
+add_library(wallhallalib SHARED )
+
+target_sources(wallhallalib 
     PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES
         src/types.cpp
         src/lexer/lexer.cpp
@@ -54,6 +47,23 @@ target_sources(${PROJECT_NAME}
         src/util/file_util.cpp
 )
 
+add_executable(${PROJECT_NAME})
+target_sources(${PROJECT_NAME} 
+  PRIVATE
+        src/main.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}
+      PRIVATE
+        wallhallalib )
+
+add_executable(lexer_test test/lexer_test.cpp)
+target_link_libraries(lexer_test
+      PRIVATE
+          wallhallalib
+          gtest
+          gtest_main
+)
 
 target_compile_options(${PROJECT_NAME}
   PRIVATE
