@@ -17,6 +17,23 @@ endif()
 add_compile_options(-fno-exceptions)
 add_compile_options(-fno-rtti)
 
+include(FetchContent)
+
+set(FETCHCONTENT_BASE_DIR
+    "${CMAKE_BINARY_DIR}/../.deps"
+)
+
+# google-test 1.18.0
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/releases/download/v1.18.0/googletest-1.18.0.tar.gz
+  URL_HASH SHA256=6e3191c1455468b3fc35a417fb565c1c5071aee1b7e7f85e30cf48a98d37d8b5
+)
+
+FetchContent_MakeAvailable(googletest)
+
+target_compile_options(gtest PRIVATE -Wno-character-conversion)
+target_compile_options(gtest_main PRIVATE -Wno-character-conversion)
 
 # # besser platformübergreifend libc++ verwenden
 # if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" 
