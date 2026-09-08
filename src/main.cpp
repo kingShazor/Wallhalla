@@ -19,17 +19,14 @@ int main( const i32 argc, char **argv )
       case tokenType_t::NUMBER:
         println( "Number: {}", static_cast< const number_s * >( token.get() )->value );
         break;
-      case tokenType_t::OPERATOR:
-        {
-          const auto operatorToken = static_cast< const operator_s * >( token.get() );
-          println( "Operator: {}, {}", std::to_underlying( operatorToken->value ), operatorToken->sign );
-          break;
-        }
       case tokenType_t::WORD:
         println( "Word: '{}'", static_cast< word_s * >( token.get() )->word );
         break;
       default:
-        println( "unknown keyword" );
+        {
+          const auto operatorToken = static_cast< const operator_s * >( token.get() );
+          println( "Operator: {}", std::to_underlying( operatorToken->tokenType ) );
+        }
       }
     }
   }

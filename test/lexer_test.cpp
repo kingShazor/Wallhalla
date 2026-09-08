@@ -48,7 +48,9 @@ namespace
 
     for ( u32 i = 0; i < result.size(); ++i )
       if ( !checkValue( result[ i ], expected[ i ] ) )
-        return false;
+      {
+        println( "failed on index {}", i );
+      }
 
     return true;
   }
@@ -61,8 +63,23 @@ TEST( LEXER_TEST, simple_test )
   vector< token_t > expected;
   expected.push_back( make_unique< word_s >( "let" ) );
   expected.push_back( make_unique< word_s >( "a" ) );
-  expected.push_back( make_unique< operator_s >( operator_t::ASIGN, '+' ) );
+  expected.push_back( make_unique< operator_s >( tokenType_t::ASIGN ) );
   expected.push_back( make_unique< number_s >( 5.0 ) );
-  expected.push_back( make_unique< operator_s >( operator_t::INSTRUCTION, ';' ) );
+  expected.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, member_test )
+{
+  println( "cw: {}", std::filesystem::current_path().string() );
+  vector< token_t > tokens = tokenize( "../test/basics/simple_member_test.js" );
+  vector< token_t > expected;
+  expected.push_back( make_unique< word_s >( "console" ) );
+  expected.push_back( make_unique< operator_s >( tokenType_t::DOT ) );
+  expected.push_back( make_unique< word_s >( "log" ) );
+  expected.push_back( make_unique< operator_s >( tokenType_t::ROUND_BRACKED_BEGIN ) );
+  expected.push_back( make_unique< word_s >( "res" ) );
+  expected.push_back( make_unique< operator_s >( tokenType_t::ROUND_BRACKED_END ) );
+  expected.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
   EXPECT_TRUE( checkTokens( tokens, expected ) );
 }

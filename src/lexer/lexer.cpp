@@ -14,12 +14,6 @@ export namespace wallhalla_n
   enum class tokenType_t : u8
   {
     NUMBER,
-    OPERATOR,
-    WORD
-  };
-
-  enum class operator_t : u8
-  {
     PLUS,
     MINUS,
     MULTIPLY,
@@ -27,8 +21,12 @@ export namespace wallhalla_n
     ROUND_BRACKED_BEGIN,
     ROUND_BRACKED_END,
     ASIGN,
-    INSTRUCTION
+    INSTRUCTION,
+    WORD,
+    DOT,
+    UNKNOWN
   };
+
 
   struct tokenBase_s
   {
@@ -55,13 +53,8 @@ export namespace wallhalla_n
 
   struct operator_s : public tokenBase_s
   {
-    operator_t value;
-    char sign;
-
-    operator_s( const operator_t value, const char c ) :
-      tokenBase_s( tokenType_t::OPERATOR ),
-      value( value ),
-      sign( c )
+    operator_s( const tokenType_t value ) :
+      tokenBase_s( value )
     {
     }
   };
@@ -114,9 +107,27 @@ namespace
     result[ '*' ] = 1;
     result[ ';' ] = 1;
     result[ '=' ] = 1;
+    result[ '(' ] = 1;
+    result[ ')' ] = 1;
     result[ '.' ] = 1;
 
     return result;
+  }
+
+  tokenType_t lookupTokenType( const char c )
+  {
+    static const std::unordered_map< char, tokenType_t > map = { { '+', tokenType_t::PLUS },
+                                                                 { '-', tokenType_t::MINUS },
+                                                                 { '/', tokenType_t::DIVIDE },
+                                                                 { '*', tokenType_t::MULTIPLY },
+                                                                 { '=', tokenType_t::ASIGN },
+                                                                 { '+', tokenType_t::PLUS },
+                                                                 { '(', tokenType_t::ROUND_BRACKED_BEGIN },
+                                                                 { ')', tokenType_t::ROUND_BRACKED_END },
+                                                                 { '.', tokenType_t::DOT } };
+
+    const auto it = map.find( c );
+    return it != map.end() ? it->second : tokenType_t::UNKNOWN;
   }
 
   bool isOperator( const char c )
@@ -151,10 +162,10 @@ namespace
         {
           if ( c == ';' && i < content.size() && content[ i + 1 ] == '\n' )
             ++i;
-          result.push_back( make_unique< operator_s >( operator_t::INSTRUCTION, ';' ) );
+          result.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
         }
         else if ( isOperator( c ) )
-          result.push_back( make_unique< operator_s >( operator_t::PLUS, c ) );
+          result.push_back( make_unique< operator_s >( lookupTokenType( c ) ) );
       }
       else
         word.push_back( c );

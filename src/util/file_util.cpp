@@ -53,7 +53,7 @@ export namespace wallhalla_n
 
   struct fileGuard_s
   {
-    file_s &&file;
+    file_s file;
 
   public:
     fileGuard_s( file_s &&file ) :
