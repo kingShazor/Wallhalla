@@ -9,6 +9,7 @@ import file;
 import types;
 
 using namespace std;
+using namespace wallhalla_n;
 
 export namespace wallhalla_n
 {
@@ -28,7 +29,14 @@ export namespace wallhalla_n
     UNKNOWN
   };
 
+}
+namespace
+{
+  char lookupChar( const tokenType_t );
+}
 
+export namespace wallhalla_n
+{
   struct tokenBase_s
   {
     tokenType_t tokenType;
@@ -67,7 +75,7 @@ export namespace wallhalla_n
 
     virtual string dump() const final
     {
-      return format( "operator - tokenType: {}", std::to_underlying( tokenType ) );
+      return format( "operator - tokenType: {} char {}", std::to_underlying( tokenType ), lookupChar( tokenType ) );
     }
   };
 
@@ -95,12 +103,17 @@ namespace
 {
   using namespace wallhalla_n;
 
+  bool isNumber( const char c )
+  {
+    return c >= '0' && c <= '9';
+  }
+
   bool isNumber( const string &word )
   {
     u8 dotCount = 0;
     for ( const char c : word )
     {
-      if ( c >= '0' && c <= '9' )
+      if ( isNumber( c ) )
         continue;
       if ( c == '.' )
       {
@@ -115,44 +128,61 @@ namespace
     return dotCount <= 1 && word.size() - dotCount > 0;
   }
 
-  std::vector< u16 > operatorVec()
+  vector< pair< char, tokenType_t > > getOperatorVec()
   {
-    std::vector< u16 > result( sizeof( u8 ) * 256, 0 );
-    result[ '+' ] = 1;
-    result[ '-' ] = 1;
-    result[ '/' ] = 1;
-    result[ '*' ] = 1;
-    result[ ';' ] = 1;
-    result[ '=' ] = 1;
-    result[ '(' ] = 1;
-    result[ ')' ] = 1;
-    result[ '.' ] = 1;
-
-    return result;
+    static const vector< pair< char, tokenType_t > > vec = { { '+', tokenType_t::PLUS },
+                                                             { '-', tokenType_t::MINUS },
+                                                             { '/', tokenType_t::DIVIDE },
+                                                             { '*', tokenType_t::MULTIPLY },
+                                                             { '=', tokenType_t::ASIGN },
+                                                             { '(', tokenType_t::ROUND_BRACKED_BEGIN },
+                                                             { ')', tokenType_t::ROUND_BRACKED_END },
+                                                             { '.', tokenType_t::DOT } };
+    return vec;
   }
 
   tokenType_t lookupTokenType( const char c )
   {
-    static const std::unordered_map< char, tokenType_t > map = { { '+', tokenType_t::PLUS },
-                                                                 { '-', tokenType_t::MINUS },
-                                                                 { '/', tokenType_t::DIVIDE },
-                                                                 { '*', tokenType_t::MULTIPLY },
-                                                                 { '=', tokenType_t::ASIGN },
-                                                                 { '+', tokenType_t::PLUS },
-                                                                 { '(', tokenType_t::ROUND_BRACKED_BEGIN },
-                                                                 { ')', tokenType_t::ROUND_BRACKED_END },
-                                                                 { '.', tokenType_t::DOT } };
+    static const auto map = []() -> unordered_map< char, tokenType_t > {
+      unordered_map< char, tokenType_t > result;
+      for ( const auto &pair : getOperatorVec() )
+        result.insert( pair );
+
+      return result;
+    }();
 
     const auto it = map.find( c );
     return it != map.end() ? it->second : tokenType_t::UNKNOWN;
   }
 
+  char lookupChar( const tokenType_t tokenType )
+  {
+    static const auto map = []() -> unordered_map< tokenType_t, char > {
+      unordered_map< tokenType_t, char > result;
+      for ( const auto [ c, tt ] : getOperatorVec() )
+        result[ tt ] = c;
+
+      return result;
+    }();
+
+    const auto it = map.find( tokenType );
+    return it != map.end() ? it->second : '?';
+  }
+
   bool isOperator( const char c )
   {
-    static auto operators = operatorVec();
+    static auto operators = []() -> vector< u16 >
+    {
+      vector< u16 > result( sizeof( u8 ) * 256, 0 );
+      for ( const char ch : getOperatorVec() | std::views::keys )
+        result[ static_cast< u8 >( ch ) ] = 1;
+
+      result[ ';' ] = 1;
+      return result;
+    }();
     return operators[ static_cast< u8 >( c ) ] != 0;
   }
-}
+} // namespace
 
 export namespace wallhalla_n
 {
@@ -166,8 +196,9 @@ export namespace wallhalla_n
     {
       const char c = content[ i ];
       println( "c: {}, word {}, isOperator {}, parseNumber {}", c, word, isOperator( c ), parseNumber );
-      if ( const bool addInstructin = ( c == '\n' || c == ';' );
-           std::isspace( static_cast< u8 >( c ) ) || addInstructin || ( isOperator( c ) && !( parseNumber && c == '.' ) ) )
+      if ( const bool addInstructin = ( c == '\n' || c == ';' ); std::isspace( static_cast< u8 >( c ) ) ||
+                                                                 addInstructin ||
+                                                                 ( isOperator( c ) && !( parseNumber && c == '.' ) ) )
       {
         if ( !word.empty() )
         {
@@ -189,7 +220,15 @@ export namespace wallhalla_n
           result.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
         }
         else if ( isOperator( c ) )
+        {
+          if ( c == '.' && i + 1 < content.size() && isNumber( content[ i + 1 ] ) )
+          {
+            parseNumber = true;
+            word.push_back( c );
+            continue;
+          }
           result.push_back( make_unique< operator_s >( lookupTokenType( c ) ) );
+        }
       }
       else
       {

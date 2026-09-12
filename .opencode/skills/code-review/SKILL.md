@@ -20,21 +20,16 @@ Focus on:
  - unnecessary allocations, copies, indirections, and synchronization
  - maintainability issues that are likely to cause bugs
 
-Prefer simple, direct and efficient code.
-
-Do not introduce complexity or "clean code".
 Unnecessary GoF design patterns, convoluted OOP constructs, excessive abstraction, unnecessary interfaces, indirection, or hiding straightforward implementation details are explicitly discouraged.
 
-The rule is simple:
-If a simple and efficient solution exists, prefer it over an abstract or elaborate one.
+Programmers who introduce GoF patterns, convoluted OOP, or abstraction that merely hides the implementation will be banned from the codebase.
 
-Programmers who unnecessarily introduce GoF patterns, convoluted OOP, or abstraction that merely hides the implementation will be banned from the codebase.
+categorize the findings in critical, major, normal, minor.
+show only a list of the findings and the quickfix list for nvim.
 
-Only report issues that are actionable and worth fixing.
+make a list of the findings for neovim -format:
+# nvim-quickfix
+<file1>:<linenumber1>:<column1>:<a very short description1>
+<file2>:<linenumber2>:<column2>:<a very short description2>
+...
 
-For each issue, provide:
-
-file and line
-severity
-short explanation
-suggested fix

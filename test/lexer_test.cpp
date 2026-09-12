@@ -61,19 +61,19 @@ namespace
   }
 
   template< typename... TOKENS >
-  vector< token_t > buildTokens( TOKENS &&... tokens )
+  vector< token_t > buildTokens( TOKENS &&...tokens )
   {
     vector< token_t > result;
     result.reserve( sizeof...( TOKENS ) );
 
-    ( result.emplace_back( make_unique< TOKENS >( std::forward< TOKENS >( tokens ) ) ), ...);
+    ( result.emplace_back( make_unique< TOKENS >( std::forward< TOKENS >( tokens ) ) ), ... );
 
     return result;
   }
 
- const filesystem::path testDir = TEST_DATA_DIR;
+  const filesystem::path testDir = TEST_DATA_DIR;
 
-} // namespacek;make
+} // namespace
 
 TEST( LEXER_TEST, simple_test )
 {
@@ -106,6 +106,39 @@ TEST( LEXER_TEST, pi )
                                             word_s( "b" ),
                                             operator_s( tokenType_t::ASIGN ),
                                             number_s( 3.14159 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, floating_1 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 0.5" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 0.5 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, floating_2 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = .5" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 0.5 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, floating_3 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 5." );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 5 ),
                                             operator_s( tokenType_t::INSTRUCTION ) );
   EXPECT_TRUE( checkTokens( tokens, expected ) );
 }
