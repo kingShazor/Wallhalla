@@ -44,7 +44,12 @@ namespace
   {
     EXPECT_EQ( result.size(), expected.size() );
     if ( result.size() != expected.size() )
+    {
+      for ( const auto &item : result )
+        println( "found token: {}", item->dump() );
+
       return false;
+    }
 
     for ( u32 i = 0; i < result.size(); ++i )
       if ( !checkValue( result[ i ], expected[ i ] ) )
@@ -54,32 +59,53 @@ namespace
 
     return true;
   }
-} // namespace
+
+  template< typename... TOKENS >
+  vector< token_t > buildTokens( TOKENS &&... tokens )
+  {
+    vector< token_t > result;
+    result.reserve( sizeof...( TOKENS ) );
+
+    ( result.emplace_back( make_unique< TOKENS >( std::forward< TOKENS >( tokens ) ) ), ...);
+
+    return result;
+  }
+
+ const filesystem::path testDir = TEST_DATA_DIR;
+
+} // namespacek;make
 
 TEST( LEXER_TEST, simple_test )
 {
-  println( "cw: {}", std::filesystem::current_path().string() );
-  vector< token_t > tokens = tokenize( "../test/basics/let_a_5.js" );
-  vector< token_t > expected;
-  expected.push_back( make_unique< word_s >( "let" ) );
-  expected.push_back( make_unique< word_s >( "a" ) );
-  expected.push_back( make_unique< operator_s >( tokenType_t::ASIGN ) );
-  expected.push_back( make_unique< number_s >( 5.0 ) );
-  expected.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
+  vector< token_t > tokens = tokenize( testDir / "basics/let_a_5.js" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "a" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 5.0 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
   EXPECT_TRUE( checkTokens( tokens, expected ) );
 }
 
 TEST( LEXER_TEST, member_test )
 {
-  println( "cw: {}", std::filesystem::current_path().string() );
-  vector< token_t > tokens = tokenize( "../test/basics/simple_member_test.js" );
-  vector< token_t > expected;
-  expected.push_back( make_unique< word_s >( "console" ) );
-  expected.push_back( make_unique< operator_s >( tokenType_t::DOT ) );
-  expected.push_back( make_unique< word_s >( "log" ) );
-  expected.push_back( make_unique< operator_s >( tokenType_t::ROUND_BRACKED_BEGIN ) );
-  expected.push_back( make_unique< word_s >( "res" ) );
-  expected.push_back( make_unique< operator_s >( tokenType_t::ROUND_BRACKED_END ) );
-  expected.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
+  vector< token_t > tokens = tokenize( testDir / "basics/simple_member_test.js" );
+  vector< token_t > expected = buildTokens( word_s( "console" ),
+                                            operator_s( tokenType_t::DOT ),
+                                            word_s( "log" ),
+                                            operator_s( tokenType_t::ROUND_BRACKED_BEGIN ),
+                                            word_s( "res" ),
+                                            operator_s( tokenType_t::ROUND_BRACKED_END ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, pi )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 3.14159" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 3.14159 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
   EXPECT_TRUE( checkTokens( tokens, expected ) );
 }

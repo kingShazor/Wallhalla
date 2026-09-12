@@ -65,6 +65,10 @@ target_link_libraries(lexer_test
           gtest_main
 )
 
+target_compile_definitions(lexer_test PRIVATE
+    TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test"
+)
+
 target_compile_options(${PROJECT_NAME}
   PRIVATE
     $<$<CXX_COMPILER_ID:MSC>:/W4>

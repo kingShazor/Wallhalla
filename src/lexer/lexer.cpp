@@ -1,5 +1,6 @@
 module;
 #include <cctype>
+#include <utility>
 export module lexer;
 
 import std;
@@ -38,6 +39,7 @@ export namespace wallhalla_n
     }
 
     virtual ~tokenBase_s() = default;
+    virtual string dump() const = 0;
   };
 
   struct number_s : public tokenBase_s
@@ -49,6 +51,11 @@ export namespace wallhalla_n
       value( value )
     {
     }
+
+    virtual string dump() const final
+    {
+      return format( "number: {}", value );
+    }
   };
 
   struct operator_s : public tokenBase_s
@@ -56,6 +63,11 @@ export namespace wallhalla_n
     operator_s( const tokenType_t value ) :
       tokenBase_s( value )
     {
+    }
+
+    virtual string dump() const final
+    {
+      return format( "operator - tokenType: {}", std::to_underlying( tokenType ) );
     }
   };
 
@@ -68,6 +80,11 @@ export namespace wallhalla_n
       tokenBase_s( tokenType_t::WORD ),
       word( word )
     {
+    }
+
+    virtual string dump() const final
+    {
+      return format( "word: {}", word );
     }
   };
 
@@ -135,23 +152,30 @@ namespace
     static auto operators = operatorVec();
     return operators[ static_cast< u8 >( c ) ] != 0;
   }
+}
 
+export namespace wallhalla_n
+{
   std::vector< token_t > buildTokens( const string &content )
   {
     std::vector< token_t > result;
     string word;
 
+    bool parseNumber = false;
     for ( u32 i = 0; i < content.size(); ++i )
     {
       const char c = content[ i ];
-      println( "c: {}, word {}, isOperator {}", c, word, isOperator( c ) );
+      println( "c: {}, word {}, isOperator {}, parseNumber {}", c, word, isOperator( c ), parseNumber );
       if ( const bool addInstructin = ( c == '\n' || c == ';' );
-           std::isspace( static_cast< u8 >( c ) ) || addInstructin || isOperator( c ) )
+           std::isspace( static_cast< u8 >( c ) ) || addInstructin || ( isOperator( c ) && !( parseNumber && c == '.' ) ) )
       {
         if ( !word.empty() )
         {
           if ( isNumber( word ) )
+          {
             result.push_back( make_unique< number_s >( std::stod( word ) ) );
+            parseNumber = false;
+          }
           else
             result.push_back( make_unique< word_s >( word ) );
 
@@ -168,17 +192,27 @@ namespace
           result.push_back( make_unique< operator_s >( lookupTokenType( c ) ) );
       }
       else
+      {
         word.push_back( c );
+        if ( word.size() == 1 )
+          parseNumber = isNumber( word );
+      }
     }
 
+    if ( !word.empty() )
+    {
+      if ( parseNumber && isNumber( word ) )
+        result.push_back( make_unique< number_s >( std::stod( word ) ) );
+      else
+        result.push_back( make_unique< word_s >( word ) );
+      result.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
+    }
     return result;
   }
-} // namespace
 
-export namespace wallhalla_n
-{
-  std::vector< token_t > tokenize( const string &fileName )
+  std::vector< token_t > tokenize( const filesystem::path &file )
   {
+    const string fileName = file.string();
     println( "tokenize {}", fileName );
     auto res = openFile( fileName, fileMode_t::READ );
     if ( !res )
