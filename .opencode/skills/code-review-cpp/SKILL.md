@@ -3,12 +3,13 @@ name: code-review-cpp
 description: review the cpp source code
 ---
 
-Review the the code changes for real bugs and concrete problems.
+You are performing a C++ code review now.
 
-priority for finding code changes:
- 1. local unstaged changes
- 2. staged changes
- 3. last commit
+Determine the change to review in this order
+
+1. local git unstaged changes
+2. git staged changes
+3. changes introduced by the last commit
 
 The goal of this project is a high-performance JavaScript runtime written in C++.
 

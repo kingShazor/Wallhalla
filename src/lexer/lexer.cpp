@@ -29,11 +29,12 @@ export namespace wallhalla_n
     UNKNOWN
   };
 
-}
+} // namespace wallhalla_n
+
 namespace
 {
   char lookupChar( const tokenType_t );
-}
+} // namespace
 
 export namespace wallhalla_n
 {
@@ -63,6 +64,22 @@ export namespace wallhalla_n
     virtual string dump() const final
     {
       return format( "number: {}", value );
+    }
+  };
+
+  struct bigInt_s : public tokenBase_s
+  {
+    i64 value;
+
+    bigInt_s( const i64 value ) :
+      tokenBase_s( tokenType_t::NUMBER ),
+      value( value )
+    {
+    }
+
+    virtual string dump() const final
+    {
+      return format( "bigInt: {}", value );
     }
   };
 
@@ -111,14 +128,24 @@ namespace
   bool isNumber( const string &word )
   {
     u8 dotCount = 0;
-    for ( const char c : word )
+    for ( u32 i = 0; i < word.size(); ++i )
     {
+      char c = word[ i ];
       if ( isNumber( c ) )
         continue;
       if ( c == '.' )
       {
         if ( ++dotCount > 1 )
           return false;
+      }
+      // parse exponent
+      else if ( ( c == 'e' || c == 'E' ) && i > 0 && isNumber( word[ i - 1 ] ) )
+      {
+        ++i;
+        if ( i >= word.size() )
+          return false;
+        c = word[ i ];
+        return isNumber( word.substr( ( c == '+' || c == '-' ) ? i + 1 : i ) );
       }
       else
         return false;
@@ -143,7 +170,8 @@ namespace
 
   tokenType_t lookupTokenType( const char c )
   {
-    static const auto map = []() -> unordered_map< char, tokenType_t > {
+    static const auto map = []() -> unordered_map< char, tokenType_t >
+    {
       unordered_map< char, tokenType_t > result;
       for ( const auto &pair : getOperatorVec() )
         result.insert( pair );
@@ -157,7 +185,8 @@ namespace
 
   char lookupChar( const tokenType_t tokenType )
   {
-    static const auto map = []() -> unordered_map< tokenType_t, char > {
+    static const auto map = []() -> unordered_map< tokenType_t, char >
+    {
       unordered_map< tokenType_t, char > result;
       for ( const auto [ c, tt ] : getOperatorVec() )
         result[ tt ] = c;
@@ -196,9 +225,10 @@ export namespace wallhalla_n
     {
       const char c = content[ i ];
       println( "c: {}, word {}, isOperator {}, parseNumber {}", c, word, isOperator( c ), parseNumber );
-      if ( const bool addInstructin = ( c == '\n' || c == ';' ); std::isspace( static_cast< u8 >( c ) ) ||
-                                                                 addInstructin ||
-                                                                 ( isOperator( c ) && !( parseNumber && c == '.' ) ) )
+      if ( const bool addInstructin = ( c == '\n' || c == ';' );
+           std::isspace( static_cast< u8 >( c ) ) || addInstructin ||
+           // allowing floating numbers and exponent
+           ( isOperator( c ) && !( parseNumber && ( c == '.' || c == '+' || c == '-' ) ) ) )
       {
         if ( !word.empty() )
         {

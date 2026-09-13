@@ -40,24 +40,33 @@ namespace
     }
   }
 
+  void dumpTokens( const vector< token_t > &tokens )
+  {
+    for ( const auto &item : tokens )
+      println( "found token: {}", item->dump() );
+  }
+
   [[nodiscard]] bool checkTokens( const vector< token_t > &result, const vector< token_t > &expected )
   {
     EXPECT_EQ( result.size(), expected.size() );
     if ( result.size() != expected.size() )
     {
-      for ( const auto &item : result )
-        println( "found token: {}", item->dump() );
+      dumpTokens( result );
 
       return false;
     }
 
+    bool res = true;
     for ( u32 i = 0; i < result.size(); ++i )
       if ( !checkValue( result[ i ], expected[ i ] ) )
       {
         println( "failed on index {}", i );
+        res = false;
       }
 
-    return true;
+    if ( !res )
+      dumpTokens( result );
+    return res;
   }
 
   template< typename... TOKENS >
@@ -139,6 +148,87 @@ TEST( LEXER_TEST, floating_3 )
                                             word_s( "b" ),
                                             operator_s( tokenType_t::ASIGN ),
                                             number_s( 5 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, negative_floating_1 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = -0.5" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            operator_s( tokenType_t::MINUS ),
+                                            number_s( 0.5 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, negative_floating_2 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = -.5" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            operator_s( tokenType_t::MINUS ),
+                                            number_s( 0.5 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, negative_floating_3 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = -5." );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            operator_s( tokenType_t::MINUS ),
+                                            number_s( 5. ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, exponent_1 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 1e2" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 100 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, exponent_2 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 1e+2" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 100 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, exponent_3 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 1e-2" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 0.01 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, exponent_4 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = -5E3" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            operator_s( tokenType_t::MINUS ),
+                                            number_s( 5000 ),
                                             operator_s( tokenType_t::INSTRUCTION ) );
   EXPECT_TRUE( checkTokens( tokens, expected ) );
 }
