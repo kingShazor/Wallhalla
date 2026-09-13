@@ -11,6 +11,8 @@ import types;
 using namespace std;
 using namespace wallhalla_n;
 
+constexpr u32 CHAR_SIZE = 256;
+
 export namespace wallhalla_n
 {
   enum class tokenType_t : u8
@@ -120,13 +122,100 @@ namespace
 {
   using namespace wallhalla_n;
 
+  bool isHexValue( const char c )
+  {
+    const static auto hexValues = []() -> vector< u16 >
+    {
+      vector< u16 > res( CHAR_SIZE, 0 );
+      res[ 'a' ] = true;
+      res[ 'b' ] = true;
+      res[ 'c' ] = true;
+      res[ 'd' ] = true;
+      res[ 'e' ] = true;
+      res[ 'f' ] = true;
+      res[ 'A' ] = true;
+      res[ 'B' ] = true;
+      res[ 'C' ] = true;
+      res[ 'D' ] = true;
+      res[ 'E' ] = true;
+      res[ 'F' ] = true;
+      return res;
+    }();
+
+    return hexValues[ static_cast< u8 >( c ) ] == 1;
+  }
+
   bool isNumber( const char c )
   {
     return c >= '0' && c <= '9';
   }
 
-  bool isNumber( const string &word )
+  struct numberCheck_s
   {
+    bool isNumber;
+    bool useFloating;
+    i32 base;
+
+    numberCheck_s( const bool isNumber, const bool useFloating = false, const i32 base = 10 ) :
+      isNumber( isNumber ),
+      useFloating( useFloating ),
+      base( base )
+    {
+    }
+
+    operator bool() const
+    {
+      return isNumber;
+    }
+  };
+
+  numberCheck_s isDifferentNumberSystem( const string &word )
+  {
+    if ( word.size() < 3 )
+      return false;
+
+    println( "isDifferentNumberSystem: {}", word );
+    // HEX
+    if ( const char c = word[ 1 ]; c == 'x' || c == 'X' )
+    {
+      println( "check HEX!" );
+      for ( u32 i = 2; i < word.size(); ++i )
+      {
+        if ( !isHexValue( word[ i ] ) )
+          return false;
+      }
+      return numberCheck_s( true, false, 16 );
+    }
+    // OKTAL
+    else if ( c == 'o' || c == 'O' )
+    {
+      println( "check oktal!" );
+    }
+    // BINARY
+    else if ( c == 'b' || c == 'B' )
+    {
+      println( "check binary!" );
+      for ( u32 i = 2; i < word.size(); ++i )
+        if ( const char ch = word[ i ]; !( ch == '0' || ch == '1' ) )
+        {
+          println( "check binary failed {}", ch );
+          return false;
+        }
+
+      return numberCheck_s( true, false, 2 );
+    }
+    else
+    {
+      println( "not valid {}", c );
+    }
+
+    return false;
+  }
+
+  numberCheck_s isNumber( const string &word )
+  {
+    if ( word.size() > 1 && word.front() == '0' && word[ 1 ] != '.' )
+      return isDifferentNumberSystem( word );
     u8 dotCount = 0;
     for ( u32 i = 0; i < word.size(); ++i )
     {
@@ -145,14 +234,14 @@ namespace
         if ( i >= word.size() )
           return false;
         c = word[ i ];
-        return isNumber( word.substr( ( c == '+' || c == '-' ) ? i + 1 : i ) );
+        // todo don't allow double exponent
+        return numberCheck_s( isNumber( word.substr( ( c == '+' || c == '-' ) ? i + 1 : i ) ), true );
       }
       else
         return false;
     }
-
     // println( "is number {}", word );
-    return dotCount <= 1 && word.size() - dotCount > 0;
+    return numberCheck_s{ dotCount <= 1 && word.size() - dotCount > 0, dotCount > 0 };
   }
 
   vector< pair< char, tokenType_t > > getOperatorVec()
@@ -202,7 +291,7 @@ namespace
   {
     static auto operators = []() -> vector< u16 >
     {
-      vector< u16 > result( sizeof( u8 ) * 256, 0 );
+      vector< u16 > result( sizeof( u8 ) * CHAR_SIZE, 0 );
       for ( const char ch : getOperatorVec() | std::views::keys )
         result[ static_cast< u8 >( ch ) ] = 1;
 
@@ -210,6 +299,14 @@ namespace
       return result;
     }();
     return operators[ static_cast< u8 >( c ) ] != 0;
+  }
+
+  f64 convertToNumber( const string &word, const numberCheck_s &res )
+  {
+    if ( res.useFloating )
+      return std::stod( word );
+
+    return static_cast< f64 >( std::stol( word, nullptr, res.base ) );
   }
 } // namespace
 
@@ -232,9 +329,9 @@ export namespace wallhalla_n
       {
         if ( !word.empty() )
         {
-          if ( isNumber( word ) )
+          if ( const auto res = isNumber( word ); res )
           {
-            result.push_back( make_unique< number_s >( std::stod( word ) ) );
+            result.push_back( make_unique< number_s >( convertToNumber( word, res ) ) );
             parseNumber = false;
           }
           else
@@ -264,14 +361,17 @@ export namespace wallhalla_n
       {
         word.push_back( c );
         if ( word.size() == 1 )
-          parseNumber = isNumber( word );
+          parseNumber = isNumber( c );
       }
     }
 
     if ( !word.empty() )
     {
-      if ( parseNumber && isNumber( word ) )
-        result.push_back( make_unique< number_s >( std::stod( word ) ) );
+      if ( parseNumber )
+      {
+        const auto res = isNumber( word );
+        result.push_back( make_unique< number_s >( convertToNumber( word, res ) ) );
+      }
       else
         result.push_back( make_unique< word_s >( word ) );
       result.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
