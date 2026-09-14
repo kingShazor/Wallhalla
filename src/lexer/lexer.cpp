@@ -150,25 +150,6 @@ namespace
     return c >= '0' && c <= '9';
   }
 
-  struct numberCheck_s
-  {
-    bool isNumber;
-    bool useFloating;
-    i32 base;
-
-    numberCheck_s( const bool isNumber, const bool useFloating = false, const i32 base = 10 ) :
-      isNumber( isNumber ),
-      useFloating( useFloating ),
-      base( base )
-    {
-    }
-
-    operator bool() const
-    {
-      return isNumber;
-    }
-  };
-
   struct lexerError_s
   {
     string error;
