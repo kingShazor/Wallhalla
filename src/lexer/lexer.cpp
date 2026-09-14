@@ -169,79 +169,111 @@ namespace
     }
   };
 
-  numberCheck_s isDifferentNumberSystem( const string &word )
+  struct lexerError_s
   {
-    if ( word.size() < 3 )
-      return false;
+    string error;
+    u32 position;
+  };
 
-    println( "isDifferentNumberSystem: {}", word );
+  bool nextIsNumber( const u32 index, const string &content )
+  {
+    return index +1 < content.size() && isNumber( content[ index +1 ] );
+  }
+
+  u32 nextIsExponent( const u32 index, const string &content )
+  {
+    if ( nextIsNumber( index, content ) )
+      return 1;
+    if ( index + 2 >= content.size() )
+      return 0;
+    const char next = content[ index +1 ];
+    return ( next == '+' || next == '-' ) && nextIsNumber( index +1, content) ? 2 : 0;
+  }
+
+  std::expected< f64, lexerError_s > parseDifferentNumberSystem( const string &content, u32 &i )
+  {
+    u32 startIndex = i - 1;
+
     // HEX
-    if ( const char c = word[ 1 ]; c == 'x' || c == 'X' )
+    if ( const char c = content[ i ]; c == 'x' || c == 'X' )
     {
       println( "check HEX!" );
-      for ( u32 i = 2; i < word.size(); ++i )
+      for ( ++i; i < content.size(); ++i )
       {
-        if ( !isHexValue( word[ i ] ) )
-          return false;
+        if ( !isHexValue( content[ i ] ) )
+          break;
       }
-      return numberCheck_s( true, false, 16 );
+      const u32 size = i - startIndex;
+      if ( size < 3 )
+        return unexpected( lexerError_s{ .error = "doesn't match hex number", .position = startIndex } );
+
+      return static_cast< f64 >( std::stol( content.substr( startIndex, size ), nullptr, 16 ) );
     }
     // OKTAL
     else if ( c == 'o' || c == 'O' )
     {
+      // todo impl
       println( "check oktal!" );
     }
     // BINARY
     else if ( c == 'b' || c == 'B' )
     {
       println( "check binary!" );
-      for ( u32 i = 2; i < word.size(); ++i )
-        if ( const char ch = word[ i ]; !( ch == '0' || ch == '1' ) )
-        {
-          println( "check binary failed {}", ch );
-          return false;
-        }
+      for ( ++i; i < content.size(); ++i )
+        if ( const char ch = content[ i ]; !( ch == '0' || ch == '1' ) )
+          break;
 
-      return numberCheck_s( true, false, 2 );
+      const u32 size = i - startIndex;
+      if ( size < 3 )
+        return unexpected( lexerError_s{ .error = "doesn't match binary number", .position = startIndex } );
+
+      return static_cast< f64 >( std::stol( content.substr( startIndex, size ), nullptr, 2 ) );
     }
     else
     {
       println( "not valid {}", c );
     }
 
-    return false;
+    return unexpected( lexerError_s{ .error = "miss matching different system number", .position = startIndex } );
   }
 
-  numberCheck_s isNumber( const string &word )
+  std::expected< f64, lexerError_s > parseNumber( const string &content, u32 &i )
   {
-    if ( word.size() > 1 && word.front() == '0' && word[ 1 ] != '.' )
-      return isDifferentNumberSystem( word );
+    if ( content[ i ] == '0' && i + 1 < content.size() && content[ i + 1 ] != '.' )
+      return parseDifferentNumberSystem( content, ++i );
     u8 dotCount = 0;
-    for ( u32 i = 0; i < word.size(); ++i )
+
+    u32 startIndex = i;
+    bool parseExponent = false;
+    for ( ; i < content.size(); ++i )
     {
-      char c = word[ i ];
+      char c = content[ i ];
       if ( isNumber( c ) )
         continue;
       if ( c == '.' )
       {
         if ( ++dotCount > 1 )
-          return false;
+          return unexpected( lexerError_s{ .error = "To many dots in floating number", .position = i } );
+        ;
       }
       // parse exponent
-      else if ( ( c == 'e' || c == 'E' ) && i > 0 && isNumber( word[ i - 1 ] ) )
+      else if ( c == 'e' || c == 'E' )
       {
-        ++i;
-        if ( i >= word.size() )
-          return false;
-        c = word[ i ];
-        // todo don't allow double exponent
-        return numberCheck_s( isNumber( word.substr( ( c == '+' || c == '-' ) ? i + 1 : i ) ), true );
+        if ( parseExponent || !isNumber( content[ i - 1 ] ) )
+          return unexpected( lexerError_s{ .error = "Invalid number", .position = startIndex } );
+        if ( const u32 exponentStartIndex = nextIsExponent( i, content ); exponentStartIndex > 0 )
+          i += exponentStartIndex -1;
+        else
+          return unexpected( lexerError_s{ .error = "Exponent number has no exponent value {}", .position = i } );
+
+        parseExponent = true;
       }
       else
-        return false;
+        break;
     }
-    // println( "is number {}", word );
-    return numberCheck_s{ dotCount <= 1 && word.size() - dotCount > 0, dotCount > 0 };
+    const u32 size = i - startIndex;
+    println( "is number {}", content.substr( startIndex, size ) );
+    return std::stod( content.substr( startIndex, size ) );
   }
 
   vector< pair< char, tokenType_t > > getOperatorVec()
@@ -301,12 +333,9 @@ namespace
     return operators[ static_cast< u8 >( c ) ] != 0;
   }
 
-  f64 convertToNumber( const string &word, const numberCheck_s &res )
+  bool isInstruction( const char c )
   {
-    if ( res.useFloating )
-      return std::stod( word );
-
-    return static_cast< f64 >( std::stol( word, nullptr, res.base ) );
+    return c == '\n' || c == ';';
   }
 } // namespace
 
@@ -315,67 +344,46 @@ export namespace wallhalla_n
   std::vector< token_t > buildTokens( const string &content )
   {
     std::vector< token_t > result;
-    string word;
 
-    bool parseNumber = false;
     for ( u32 i = 0; i < content.size(); ++i )
     {
       const char c = content[ i ];
-      println( "c: {}, word {}, isOperator {}, parseNumber {}", c, word, isOperator( c ), parseNumber );
-      if ( const bool addInstructin = ( c == '\n' || c == ';' );
-           std::isspace( static_cast< u8 >( c ) ) || addInstructin ||
-           // allowing floating numbers and exponent
-           ( isOperator( c ) && !( parseNumber && ( c == '.' || c == '+' || c == '-' ) ) ) )
+      if ( isNumber( c ) || ( c == '.' && i + 1 < content.size() && isNumber( content[ i + 1 ] ) ) )
       {
-        if ( !word.empty() )
+        const auto res = parseNumber( content, i );
+        if ( !res )
         {
-          if ( const auto res = isNumber( word ); res )
-          {
-            result.push_back( make_unique< number_s >( convertToNumber( word, res ) ) );
-            parseNumber = false;
-          }
-          else
-            result.push_back( make_unique< word_s >( word ) );
+          std::println( "error: {}, index {}", res.error().error, res.error().position );
 
-          println( "got word {}", word );
-          word.clear();
+          return {};
         }
-        if ( addInstructin )
-        {
-          if ( c == ';' && i < content.size() && content[ i + 1 ] == '\n' )
-            ++i;
+        result.push_back( make_unique< number_s >( *res ) );
+        --i;
+        // todo !happy path
+      }
+      else if ( std::isalpha( c ) ) // todo + locale?
+      {
+        u32 startIndex = i;
+        for ( ++i; i < content.size(); ++i )
+          if ( !std::isalpha( content[ i ] ) )
+            break;
+
+        const u32 size = i - startIndex;
+        result.push_back( make_unique< word_s >( content.substr( startIndex, size ) ) );
+        --i;
+      }
+      else if ( isInstruction( c ) )
+      {
+        if ( !isInstruction( content[ i - 1 ] ) )
           result.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
-        }
-        else if ( isOperator( c ) )
-        {
-          if ( c == '.' && i + 1 < content.size() && isNumber( content[ i + 1 ] ) )
-          {
-            parseNumber = true;
-            word.push_back( c );
-            continue;
-          }
-          result.push_back( make_unique< operator_s >( lookupTokenType( c ) ) );
-        }
       }
-      else
-      {
-        word.push_back( c );
-        if ( word.size() == 1 )
-          parseNumber = isNumber( c );
-      }
+      else if ( isOperator( c ) )
+        result.push_back( make_unique< operator_s >( lookupTokenType( c ) ) );
+
     }
 
-    if ( !word.empty() )
-    {
-      if ( parseNumber )
-      {
-        const auto res = isNumber( word );
-        result.push_back( make_unique< number_s >( convertToNumber( word, res ) ) );
-      }
-      else
-        result.push_back( make_unique< word_s >( word ) );
+    if ( !result.empty() && result.back()->tokenType != tokenType_t::INSTRUCTION )
       result.push_back( make_unique< operator_s >( tokenType_t::INSTRUCTION ) );
-    }
     return result;
   }
 
