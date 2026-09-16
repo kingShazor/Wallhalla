@@ -18,6 +18,7 @@ export namespace wallhalla_n
   enum class tokenType_t : u8
   {
     NUMBER,
+    BIG_INT,
     PLUS,
     MINUS,
     MULTIPLY,
@@ -74,7 +75,7 @@ export namespace wallhalla_n
     i64 value;
 
     bigInt_s( const i64 value ) :
-      tokenBase_s( tokenType_t::NUMBER ),
+      tokenBase_s( tokenType_t::BIG_INT ),
       value( value )
     {
     }
@@ -145,6 +146,11 @@ namespace
     return hexValues[ static_cast< u8 >( c ) ] == 1;
   }
 
+  bool isOctal( const char c )
+  {
+    return c >= '0' && c <= '7';
+  }
+
   bool isNumber( const char c )
   {
     return c >= '0' && c <= '9';
@@ -158,7 +164,7 @@ namespace
 
   bool nextIsNumber( const u32 index, const string &content )
   {
-    return index +1 < content.size() && isNumber( content[ index +1 ] );
+    return index + 1 < content.size() && isNumber( content[ index + 1 ] );
   }
 
   u32 nextIsExponent( const u32 index, const string &content )
@@ -167,8 +173,8 @@ namespace
       return 1;
     if ( index + 2 >= content.size() )
       return 0;
-    const char next = content[ index +1 ];
-    return ( next == '+' || next == '-' ) && nextIsNumber( index +1, content) ? 2 : 0;
+    const char next = content[ index + 1 ];
+    return ( next == '+' || next == '-' ) && nextIsNumber( index + 1, content ) ? 2 : 0;
   }
 
   std::expected< f64, lexerError_s > parseDifferentNumberSystem( const string &content, u32 &i )
@@ -193,8 +199,16 @@ namespace
     // OKTAL
     else if ( c == 'o' || c == 'O' )
     {
-      // todo impl
       println( "check oktal!" );
+      for ( ++i; i < content.size(); ++i )
+        if ( !isOctal( content[ i ] ) )
+          break;
+
+      const u32 size = i - startIndex;
+      if ( size < 3 )
+        return unexpected( lexerError_s{ .error = "doesn't match octal number", .position = startIndex } );
+
+      return static_cast< f64 >( std::stol( content.substr( startIndex + 2, size ), nullptr, 8 ) );
     }
     // BINARY
     else if ( c == 'b' || c == 'B' )
@@ -218,8 +232,9 @@ namespace
     return unexpected( lexerError_s{ .error = "miss matching different system number", .position = startIndex } );
   }
 
-  std::expected< f64, lexerError_s > parseNumber( const string &content, u32 &i )
+  std::expected< variant< f64, i64 >, lexerError_s > parseNumber( const string &content, u32 &i )
   {
+    // todo kann auch bigInt sein
     if ( content[ i ] == '0' && i + 1 < content.size() && content[ i + 1 ] != '.' )
       return parseDifferentNumberSystem( content, ++i );
     u8 dotCount = 0;
@@ -243,7 +258,7 @@ namespace
         if ( parseExponent || !isNumber( content[ i - 1 ] ) )
           return unexpected( lexerError_s{ .error = "Invalid number", .position = startIndex } );
         if ( const u32 exponentStartIndex = nextIsExponent( i, content ); exponentStartIndex > 0 )
-          i += exponentStartIndex -1;
+          i += exponentStartIndex - 1;
         else
           return unexpected( lexerError_s{ .error = "Exponent number has no exponent value {}", .position = i } );
 
@@ -253,7 +268,13 @@ namespace
         break;
     }
     const u32 size = i - startIndex;
-    println( "is number {}", content.substr( startIndex, size ) );
+    if ( dotCount == 0 && i < content.size() && content[ i ] == 'n' )
+    {
+      ++i;
+      return std::stol( content.substr( startIndex, size ) );
+    }
+
+    // println( "is number {}", content.substr( startIndex, size ) );
     return std::stod( content.substr( startIndex, size ) );
   }
 
@@ -338,7 +359,13 @@ export namespace wallhalla_n
 
           return {};
         }
-        result.push_back( make_unique< number_s >( *res ) );
+        if ( const auto *floatPtr = std::get_if< f64 >( &*res ); floatPtr )
+          result.push_back( make_unique< number_s >( *floatPtr ) );
+        else if ( const auto *i64Ptr = std::get_if< i64 >( &*res ); i64Ptr )
+          result.push_back( make_unique< bigInt_s >( *i64Ptr ) );
+        else
+          std::println( "unexpected error: arghhhhh!" );
+
         --i;
         // todo !happy path
       }
@@ -360,7 +387,6 @@ export namespace wallhalla_n
       }
       else if ( isOperator( c ) )
         result.push_back( make_unique< operator_s >( lookupTokenType( c ) ) );
-
     }
 
     if ( !result.empty() && result.back()->tokenType != tokenType_t::INSTRUCTION )

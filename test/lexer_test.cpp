@@ -276,3 +276,37 @@ TEST( LEXER_TEST, binary_1 )
                                             operator_s( tokenType_t::INSTRUCTION ) );
   EXPECT_TRUE( checkTokens( tokens, expected ) );
 }
+
+TEST( LEXER_TEST, octal_1 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 0o26" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            number_s( 22 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, bigInt_1 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = 26n" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            bigInt_s( 26 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
+
+TEST( LEXER_TEST, bigInt_2 )
+{
+  vector< token_t > tokens = wallhalla_n::buildTokens( "let b = -26n" );
+  vector< token_t > expected = buildTokens( word_s( "let" ),
+                                            word_s( "b" ),
+                                            operator_s( tokenType_t::ASIGN ),
+                                            operator_s( tokenType_t::MINUS ),
+                                            bigInt_s( 26 ),
+                                            operator_s( tokenType_t::INSTRUCTION ) );
+  EXPECT_TRUE( checkTokens( tokens, expected ) );
+}
