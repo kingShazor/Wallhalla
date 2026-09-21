@@ -1,5 +1,6 @@
 module;
 #include <cctype>
+#include <expected>
 #include <utility>
 export module lexer;
 
@@ -177,7 +178,57 @@ namespace
     return ( next == '+' || next == '-' ) && nextIsNumber( index + 1, content ) ? 2 : 0;
   }
 
-  std::expected< f64, lexerError_s > parseDifferentNumberSystem( const string &content, u32 &i )
+  std::expected< std::variant< f64, i64 >, lexerError_s > convertToNumber( const string &numberString,
+                                                                           u32 &i,
+                                                                           const u32 startIndex,
+                                                                           const u32 seperatorCount,
+                                                                           const string &type,
+                                                                           const u8 base )
+  {
+    const u32 size = i - startIndex - seperatorCount;
+    println( "str {}, size {}", numberString, size );
+    if ( size < 3 )
+      return unexpected( lexerError_s{ .error = format( "doesn't match {} number", type ), .position = startIndex } );
+
+    if ( const u32 y = size; y < numberString.size() && numberString[ y ] == 'n' )
+    {
+      ++i;
+      return static_cast< i64 >( std::stol( numberString.substr( 2, size ), nullptr, base ) );
+    }
+
+    return static_cast< f64 >( std::stol( numberString.substr( 2, size ), nullptr, base ) );
+  }
+
+  std::expected< vector< u32 >, lexerError_s > getSeperators( u32 &i, const string &content, const auto isNumber )
+  {
+    vector< u32 > separators;
+    for ( ++i; i < content.size(); ++i )
+    {
+      println( "current hex-value: {}", content[ i ] );
+      if ( const char c = content[ i ]; c == '_' )
+      {
+        if ( i > 0 && i < content.size() && isNumber( content[ i - 1 ] ) && isNumber( content[ i + 1 ] ) )
+          separators.push_back( i );
+        else
+          return std::unexpected( lexerError_s{ .error = "separator is not between two number-chars", .position = i } );
+      }
+      else if ( !isNumber( c ) )
+        break;
+    }
+
+    return separators;
+  }
+
+  string normalizeNumberString( const string &content, const u32 i, const u32 startIndex, const vector< u32 > &separators )
+  {
+    auto res = content.substr( startIndex, i - startIndex +1 ); 
+    for ( const u32 s : separators )
+      res.erase( s -startIndex, 1 );
+
+    return res;
+  }
+
+  std::expected< std::variant< f64, i64 >, lexerError_s > parseDifferentNumberSystem( const string &content, u32 &i )
   {
     u32 startIndex = i - 1;
 
@@ -185,44 +236,33 @@ namespace
     if ( const char c = content[ i ]; c == 'x' || c == 'X' )
     {
       println( "check HEX!" );
-      for ( ++i; i < content.size(); ++i )
-      {
-        if ( !isHexValue( content[ i ] ) )
-          break;
-      }
-      const u32 size = i - startIndex;
-      if ( size < 3 )
-        return unexpected( lexerError_s{ .error = "doesn't match hex number", .position = startIndex } );
-
-      return static_cast< f64 >( std::stol( content.substr( startIndex, size ), nullptr, 16 ) );
+      const auto res = getSeperators( i, content, isHexValue );
+      if ( !res )
+        return std::unexpected( res.error() );
+      const string numberStr = normalizeNumberString( content, i, startIndex, *res );
+      return convertToNumber( numberStr, i, startIndex, res->size(), "hex", 16 );
     }
     // OKTAL
     else if ( c == 'o' || c == 'O' )
     {
       println( "check oktal!" );
-      for ( ++i; i < content.size(); ++i )
-        if ( !isOctal( content[ i ] ) )
-          break;
+      const auto res = getSeperators( i, content, isOctal );
+      if ( !res )
+        return std::unexpected( res.error() );
 
-      const u32 size = i - startIndex;
-      if ( size < 3 )
-        return unexpected( lexerError_s{ .error = "doesn't match octal number", .position = startIndex } );
-
-      return static_cast< f64 >( std::stol( content.substr( startIndex + 2, size ), nullptr, 8 ) );
+      const string numberStr = normalizeNumberString( content, i, startIndex, *res );
+      return convertToNumber( numberStr, i, startIndex, res->size(), "octal", 8 );
     }
     // BINARY
     else if ( c == 'b' || c == 'B' )
     {
       println( "check binary!" );
-      for ( ++i; i < content.size(); ++i )
-        if ( const char ch = content[ i ]; !( ch == '0' || ch == '1' ) )
-          break;
+      const auto res = getSeperators( i, content, []( const char c ){ return ( c == '0' || c == '1' ); } );
+      if ( !res )
+        return std::unexpected( res.error() );
 
-      const u32 size = i - startIndex;
-      if ( size < 3 )
-        return unexpected( lexerError_s{ .error = "doesn't match binary number", .position = startIndex } );
-
-      return static_cast< f64 >( std::stol( content.substr( startIndex, size ), nullptr, 2 ) );
+      const string numberStr = normalizeNumberString( content, i, startIndex, *res );
+      return convertToNumber( numberStr, i, startIndex, res->size(), "binary", 2 );
     }
     else
     {
@@ -232,9 +272,9 @@ namespace
     return unexpected( lexerError_s{ .error = "miss matching different system number", .position = startIndex } );
   }
 
+  // todo seperators
   std::expected< variant< f64, i64 >, lexerError_s > parseNumber( const string &content, u32 &i )
   {
-    // todo kann auch bigInt sein
     if ( content[ i ] == '0' && i + 1 < content.size() && content[ i + 1 ] != '.' )
       return parseDifferentNumberSystem( content, ++i );
     u8 dotCount = 0;
@@ -418,5 +458,4 @@ export namespace wallhalla_n
 
     return buildTokens( content );
   }
-
 } // namespace wallhalla_n
